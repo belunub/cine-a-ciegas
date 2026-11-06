@@ -13,6 +13,14 @@ export function posterUrl(path, size = 'w342') {
   return path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 }
 
+export function profileUrl(path) {
+  return path ? `https://image.tmdb.org/t/p/w185${path}` : null;
+}
+
+export function tmdbMovieLink(id) {
+  return `https://www.themoviedb.org/movie/${id}`;
+}
+
 async function tmdbFetch(path, params = {}) {
   const url = new URL(BASE_URL + path);
   Object.entries({ language: LANGUAGE, ...params }).forEach(([key, value]) =>
@@ -72,4 +80,43 @@ export async function pickRandomMovie(genreId, excludeTmdbIds = []) {
   }
 
   throw new Error('No encontramos una película nueva de ese género. Probá girar de nuevo.');
+}
+
+// v2: ficha completa de una película (duración, director, elenco y recomendaciones)
+// en una sola llamada, usando append_to_response.
+export async function getMovieDetails(movieId) {
+  const data = await tmdbFetch(`/movie/${movieId}`, {
+    append_to_response: 'credits,recommendations',
+  });
+  const director = (data.credits?.crew || []).find((person) => person.job === 'Director');
+
+  return {
+    runtime: data.runtime || null,
+    tagline: data.tagline || '',
+    director: director ? director.name : null,
+    genreNames: (data.genres || []).map((g) => g.name),
+    cast: (data.credits?.cast || []).slice(0, 8).map((person) => ({
+      id: person.id,
+      name: person.name,
+      character: person.character || '',
+      profilePath: person.profile_path || null,
+    })),
+    recommendations: (data.recommendations?.results || [])
+      .filter((movie) => movie.poster_path)
+      .slice(0, 10)
+      .map((movie) => ({
+        id: movie.id,
+        title: movie.title,
+        posterPath: movie.poster_path,
+        year: (movie.release_date || '').slice(0, 4),
+      })),
+  };
+}
+
+// "112" → "1 h 52 min"
+export function formatRuntime(minutes) {
+  if (!minutes) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h} h ${m} min` : `${m} min`;
 }

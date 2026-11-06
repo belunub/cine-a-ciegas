@@ -6,6 +6,7 @@ import Loader from './Loader';
 import Roulette from './Roulette';
 import MovieTicket from './MovieTicket';
 import History from './History';
+import { EmptyBill, LastShow, VetoNotice } from './LastShow';
 
 // Pantalla de un grupo: ruleta, cartelera e historial.
 export default function GroupView({ groupId, user, onExit }) {
@@ -40,7 +41,7 @@ export default function GroupView({ groupId, user, onExit }) {
     setJoining(true);
     try {
       await joinGroup(groupId, user);
-      notify('¡Listo! Ya sos parte del grupo.');
+      notify('Ya sos parte del grupo.');
     } catch (err) {
       notify(friendlyError(err), 'error');
     } finally {
@@ -52,7 +53,7 @@ export default function GroupView({ groupId, user, onExit }) {
     const link = `${window.location.origin}/#/g/${groupId}`;
     navigator.clipboard
       .writeText(`Sumate a "${group.name}" en Cine a Ciegas: ${link} (código ${groupId})`)
-      .then(() => notify('Invitación copiada. ¡Pasásela al grupo!'))
+      .then(() => notify('Invitación copiada. Pasásela al grupo.'))
       .catch(() => notify(`No se pudo copiar. El código es ${groupId}.`, 'error'));
   }
 
@@ -71,7 +72,10 @@ export default function GroupView({ groupId, user, onExit }) {
     return (
       <div className="panel state-panel">
         <h2 className="display">Grupo no encontrado</h2>
-        <p>No existe ningún grupo con el código <span className="mono">{groupId}</span>.</p>
+        <p>
+          No existe ningún grupo con el código <span className="code">{groupId}</span>. Revisá que
+          esté bien escrito.
+        </p>
         <button className="btn btn--ghost" onClick={onExit}>Volver a la boletería</button>
       </div>
     );
@@ -80,9 +84,12 @@ export default function GroupView({ groupId, user, onExit }) {
   if (!isMember) {
     return (
       <div className="panel state-panel">
-        <p className="mono">Invitación · Nº {group.code}</p>
-        <h2 className="display">{group.name}</h2>
-        <p>Te invitaron a este grupo. ¿Te sumás a la función?</p>
+        <p className="state-panel__kicker">Te invitaron a</p>
+        <h2 className="display display--xl">{group.name}</h2>
+        <p>
+          {group.memberIds.length} {group.memberIds.length === 1 ? 'persona ya está' : 'personas ya están'}{' '}
+          en este grupo.
+        </p>
         <div className="actions">
           <button className="btn btn--primary" onClick={handleJoin} disabled={joining}>
             {joining ? 'Sumándote…' : 'Unirme al grupo'}
@@ -94,14 +101,27 @@ export default function GroupView({ groupId, user, onExit }) {
   }
 
   const currentMovie = movies?.find((m) => m.id === group.currentMovieId);
+  // La última película que pasó por cartelera en la ronda anterior o en esta.
+  const latest = !group.currentMovieId ? movies?.[0] : null;
+  const roundNumber = group.round?.number ?? 1;
+  const showLastShow = latest?.status === 'vista' && latest.round === roundNumber - 1;
+  const showVeto = latest?.status === 'vetada' && latest.round === roundNumber;
+
+  let bill;
+  if (movies === null) bill = <Loader text="Cargando la cartelera…" />;
+  else if (currentMovie) bill = <MovieTicket movie={currentMovie} group={group} user={user} />;
+  else if (group.currentMovieId) bill = <Loader text="Trayendo la película…" />;
+  else if (showLastShow) bill = <LastShow movie={latest} />;
+  else if (showVeto) bill = <VetoNotice movie={latest} />;
+  else bill = <EmptyBill />;
 
   return (
     <div className="group">
       <header className="group__header">
-        <div>
-          <button className="btn btn--link" onClick={onExit}>← Boletería</button>
+        <div className="group__heading">
+          <button className="btn btn--link" onClick={onExit}>Volver a la boletería</button>
           <h1 className="display display--xl">{group.name}</h1>
-          <ul className="members">
+          <ul className="members" aria-label="Integrantes">
             {group.memberIds.map((id) => {
               const member = group.members?.[id];
               return (
@@ -119,34 +139,25 @@ export default function GroupView({ groupId, user, onExit }) {
             })}
           </ul>
         </div>
-        <div className="group__code">
-          <span className="mono group__code-label">Ticket Nº</span>
-          <span className="mono group__code-value">{group.code}</span>
-          <button className="btn btn--ghost btn--small" onClick={copyInvite}>Copiar invitación</button>
+
+        <div className="code-stub">
+          <span className="code-stub__label">Código del grupo</span>
+          <span className="code-stub__value">{group.code}</span>
+          <button className="btn btn--outline-ink btn--small" onClick={copyInvite}>
+            Copiar invitación
+          </button>
         </div>
       </header>
 
-      <div className={group.currentMovieId ? 'group-grid has-movie' : 'group-grid'}>
-        <section className="panel group-grid__roulette">
-          <h2 className="panel__title">La ruleta</h2>
+      <div className={currentMovie ? 'group-grid has-movie' : 'group-grid'}>
+        <section className="panel stage" aria-labelledby="t-ruleta">
+          <h2 id="t-ruleta" className="panel__title">La ruleta</h2>
           <Roulette group={group} genres={genres} movies={movies} user={user} />
         </section>
 
-        <section className="panel group-grid__bill">
-          <h2 className="panel__title">Cartelera</h2>
-          {movies === null && <Loader text="Cargando la cartelera…" />}
-          {movies !== null && currentMovie && (
-            <MovieTicket movie={currentMovie} group={group} user={user} />
-          )}
-          {movies !== null && !group.currentMovieId && (
-            <div className="empty-bill">
-              <p className="display">Sin función</p>
-              <p>No hay ninguna película en cartelera. ¡Giren la ruleta!</p>
-            </div>
-          )}
-          {movies !== null && group.currentMovieId && !currentMovie && (
-            <Loader text="Trayendo la película…" />
-          )}
+        <section className="panel" aria-labelledby="t-cartelera">
+          <h2 id="t-cartelera" className="panel__title">En cartelera</h2>
+          {bill}
         </section>
       </div>
 

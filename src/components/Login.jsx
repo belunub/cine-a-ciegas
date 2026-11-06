@@ -20,26 +20,31 @@ export default function Login() {
   }
 
   return (
-    <div className="center-screen login">
-      <div className="login__card">
-        <p className="mono login__kicker">Función única · Entrada general</p>
-        <h1 className="marquee-title">
-          Cine
-          <span>a ciegas</span>
+    <div className="login">
+      {/* v2: el título es un cartel de marquesina con bombitas */}
+      <div className="sign">
+        <div className="sign__bulbs" aria-hidden="true" />
+        <h1 className="sign__title">
+          <span className="sign__line sign__line--top">Cine</span>
+          <span className="sign__line sign__line--bottom">a ciegas</span>
         </h1>
-        <p className="login__tagline">Giren la ruleta. Lo que toca, se ve.</p>
+      </div>
 
-        <ol className="login__steps">
+      <p className="login__tagline">Giren la ruleta. Lo que toca, se ve.</p>
+
+      <div className="login__ticket">
+        <ol className="login__steps paper notch-right">
           <li>Armá un grupo con quien quieras ver películas.</li>
           <li>Carguen sus géneros favoritos en la ruleta.</li>
           <li>Giren, vean la película y dejen su reseña.</li>
         </ol>
-
-        <button className="btn btn--primary btn--big" onClick={handleLogin} disabled={loading}>
-          {loading ? 'Abriendo Google…' : 'Entrar con Google'}
-        </button>
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="login__stub paper paper--stub notch-left">
+          <button className="btn btn--primary btn--big" onClick={handleLogin} disabled={loading}>
+            {loading ? 'Abriendo Google…' : 'Entrar con Google'}
+          </button>
+        </div>
       </div>
+      {error && <p className="form-error" role="alert">{error}</p>}
     </div>
   );
 }

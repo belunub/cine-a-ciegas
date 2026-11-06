@@ -2,7 +2,7 @@
 
 **Giren la ruleta. Lo que toca, se ve.**
 
-Web app para grupos de amigos o parejas que nunca se ponen de acuerdo en qué película ver. Cada integrante suma sus géneros favoritos a una ruleta compartida. La ruleta elige un género y la app trae una película al azar de ese género. La película queda **en cartelera** hasta que todo el grupo la vea y deje su reseña. Cada integrante tiene **un veto por ronda** para descartar una película y volver a girar.
+Web app para cualquier grupo (familia, amigos, pareja, de a dos o de a muchos) que nunca se pone de acuerdo en qué película ver. Cada integrante suma sus géneros favoritos a una ruleta compartida. La ruleta elige un género y la app trae una película al azar de ese género. La película queda **en cartelera** hasta que todo el grupo la vea y deje su reseña. Cada integrante tiene **un veto por ronda** para descartar una película y volver a girar.
 
 Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 
@@ -16,16 +16,17 @@ Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 - **TMDB API**: datos de películas (póster, sinopsis, géneros).
 - **Vercel**: publicación de la app.
 
-## Funciones (v1)
+## Funciones
 
 - Iniciar sesión con Google.
 - Crear un grupo (genera un código de 6 caracteres) o unirse con un código o un link de invitación.
 - Sumar y quitar géneros de la ruleta del grupo.
 - Girar la ruleta: elige un género y trae una película de TMDB que el grupo todavía no tuvo.
-- Cartelera: la película actual, con póster, sinopsis, etiquetas de género y quién la giró.
-- Veto: cada integrante puede vetar una vez por ronda, siempre que nadie haya reseñado todavía.
-- Reseñas: puntaje de 1 a 5 estrellas más un comentario. Cuando reseñan todos, la ronda termina y se recargan los vetos.
-- Historial de películas vistas (con promedio) y vetadas (con quién las vetó).
+- Cartelera: la película actual como una entrada de cine, con póster, sinopsis, duración, dirección, etiquetas de género, **reparto** y **recomendaciones similares**.
+- Veto: cada integrante puede vetar una vez por ronda, siempre que nadie haya reseñado todavía. Pide confirmación antes de usarlo.
+- Reseñas **selladas**: puntaje de 1 a 5 estrellas más un comentario. Nadie ve lo que escribieron los demás hasta que reseña todo el grupo; entonces se revelan juntas, con el promedio.
+- Al terminar la ronda se recargan los vetos.
+- Archivo de películas vistas (con promedio) y vetadas (con quién las vetó).
 - Mensajes de carga, éxito y error. Diseño adaptable a celular.
 
 ## Dónde se conecta Firebase
@@ -62,6 +63,7 @@ groups/{CODIGO}/genres/{idGeneroTMDB}
 
 groups/{CODIGO}/movies/{id}
   tmdbId, title, overview, posterPath, year, voteAverage, genreNames
+  runtime, tagline, director, cast: [...], recommendations: [...]   ← desde v2
   spunGenre, spunBy, spunByName, round
   status: "cartelera" | "vista" | "vetada"
   vetoedBy, vetoedByName
@@ -130,6 +132,14 @@ Las reglas de Firestore se publican en Firebase: desplegar en Vercel no las actu
 ### v1: primera versión funcional
 - Flujo completo: login, grupos, ruleta, cartelera, veto, reseñas e historial.
 - Identidad base: paleta de sala de cine (carbón, crema, bordó, mostaza) y tipografías de marquesina, cartel de época y máquina de escribir.
+
+### v2: mejoras de funciones y rediseño
+- **Ficha completa:** reparto con fotos y fila de películas recomendadas (TMDB `append_to_response=credits,recommendations`). La ficha se guarda en Firestore al girar.
+- **Reseñas selladas y revelación:** las reseñas ajenas se ven "dadas vuelta" hasta que reseña todo el grupo; después se revelan juntas con el promedio.
+- **Veto con confirmación** dentro de la entrada, sin ventanas del navegador.
+- **Rediseño:** la película es una entrada troquelada (cuerpo + talón perforado) que se "imprime" al salir; reseñar pone un sello de "Vista"; la ruleta tiene un aro de bombitas que se encienden en cadena al girar; el login es un cartel de marquesina; los grupos y el archivo son entradas y talones de papel con textura.
+- Texto de bienvenida más inclusivo ("Armá un grupo con quien quieras ver películas").
+- Corrección: los nombres de géneros de la mitad izquierda de la ruleta ya no aparecen de cabeza, y dos porciones vecinas nunca tienen el mismo color.
 
 ---
 

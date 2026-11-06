@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Wheel from './Wheel';
 import GenreManager from './GenreManager';
 import { rotationFor } from '../lib/wheel';
-import { getMovieGenres, pickRandomMovie } from '../lib/tmdb';
+import { getMovieDetails, getMovieGenres, pickRandomMovie } from '../lib/tmdb';
 import { putMovieOnBill } from '../lib/groups';
 import { friendlyError } from '../lib/errors';
 import { useToast } from '../lib/toast';
@@ -16,6 +16,7 @@ export default function Roulette({ group, genres, movies, user }) {
   const [genresError, setGenresError] = useState(null);
   const [rotation, setRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
+  const [winner, setWinner] = useState(null); // { index, name } de la última tirada
   const spinDone = useRef(null);
 
   useEffect(() => {
@@ -24,6 +25,10 @@ export default function Roulette({ group, genres, movies, user }) {
       .catch((err) => setGenresError(err.message));
   }, []);
 
+  // Si cambian los géneros, la porción ganadora ya no es la misma: la olvidamos.
+  const genreCount = genres?.length ?? 0;
+  useEffect(() => setWinner(null), [genreCount]);
+
   const hasMovie = Boolean(group.currentMovieId);
   const enoughGenres = genres && genres.length >= 2;
   const canSpin = enoughGenres && !hasMovie && !spinning;
@@ -31,7 +36,7 @@ export default function Roulette({ group, genres, movies, user }) {
   let hint = null;
   if (genres === null) hint = 'Cargando la ruleta…';
   else if (!enoughGenres) hint = 'Sumen al menos 2 géneros para poder girar.';
-  else if (hasMovie) hint = 'Hay una película en cartelera. Cuando todos la reseñen (o alguien la vete), se vuelve a girar.';
+  else if (hasMovie) hint = 'Hay una película en cartelera. Se vuelve a girar cuando reseñen todos o alguien la vete.';
 
   // Devuelve una promesa que se resuelve cuando termina la animación.
   function animateTo(index) {
@@ -50,24 +55,28 @@ export default function Roulette({ group, genres, movies, user }) {
   async function handleSpin() {
     if (!canSpin) return;
     setSpinning(true);
+    setWinner(null);
 
     const index = Math.floor(Math.random() * genres.length);
     const genre = genres[index];
     const excludeIds = (movies || []).map((m) => m.tmdbId);
 
-    // Buscamos la película mientras la ruleta gira.
+    // Mientras la ruleta gira, buscamos la película y su ficha completa.
     const moviePromise = pickRandomMovie(genre.tmdbId, excludeIds);
+    const detailsPromise = moviePromise.then((m) => getMovieDetails(m.id)).catch(() => null);
     moviePromise.catch(() => {}); // el error se maneja abajo
 
     try {
       await animateTo(index);
+      setWinner({ index, name: genre.name });
       const movie = await moviePromise;
+      const details = await detailsPromise; // si falla, guardamos la película igual
       const names = (movie.genre_ids || [])
         .map((id) => allGenres?.find((g) => g.id === id)?.name)
         .filter(Boolean);
       // CREATE: guardamos la película en Firestore
-      await putMovieOnBill(group.id, movie, genre, names, user);
-      notify(`¡Salió ${genre.name}! Les toca: ${movie.title}.`);
+      await putMovieOnBill(group.id, movie, genre, names, details, user);
+      notify(`Salió ${genre.name}. Les toca ${movie.title}.`);
     } catch (err) {
       notify(friendlyError(err), 'error');
     } finally {
@@ -75,7 +84,7 @@ export default function Roulette({ group, genres, movies, user }) {
     }
   }
 
-  const vetoesUsed = group.round?.vetoesUsed?.length ?? 0;
+  const vetoesLeft = group.memberIds.length - (group.round?.vetoesUsed?.length ?? 0);
 
   return (
     <div className="roulette">
@@ -83,17 +92,31 @@ export default function Roulette({ group, genres, movies, user }) {
         genres={genres || []}
         rotation={rotation}
         spinning={spinning}
+        winnerIndex={spinning ? null : winner?.index}
         onSpinEnd={() => spinDone.current?.()}
       />
+
+      <p className="roulette__result" aria-live="polite">
+        {winner && !spinning ? <>Salió <strong>{winner.name}</strong></> : ' '}
+      </p>
 
       <button className="btn btn--primary btn--big btn--block" onClick={handleSpin} disabled={!canSpin}>
         {spinning ? 'Girando…' : 'Girar la ruleta'}
       </button>
       {hint && <p className="hint">{hint}</p>}
 
-      <p className="mono round-info">
-        Ronda {group.round?.number ?? 1} · Vetos usados: {vetoesUsed}/{group.memberIds.length}
-      </p>
+      <dl className="round-info">
+        <div>
+          <dt>Ronda</dt>
+          <dd>{group.round?.number ?? 1}</dd>
+        </div>
+        <div>
+          <dt>Vetos disponibles</dt>
+          <dd>
+            {vetoesLeft} de {group.memberIds.length}
+          </dd>
+        </div>
+      </dl>
 
       <GenreManager
         groupId={group.id}

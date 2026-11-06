@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { friendlyError } from '../lib/errors';
 
 const MAX_TEXT = 280;
+const LABELS = ['', 'Mala', 'Floja', 'Está bien', 'Muy buena', 'Imperdible'];
 
 // Formulario de reseña con validaciones básicas.
 export default function ReviewForm({ onSubmit }) {
   const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
   const [text, setText] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -28,23 +30,34 @@ export default function ReviewForm({ onSubmit }) {
     }
   }
 
+  const shown = hover || rating;
+
   return (
     <form className="review-form" onSubmit={handleSubmit} noValidate>
-      <p className="mono">¿La viste? Dejá tu reseña</p>
-      <div className="star-input" role="radiogroup" aria-label="Puntaje">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            role="radio"
-            aria-checked={rating === n}
-            aria-label={`${n} ${n === 1 ? 'estrella' : 'estrellas'}`}
-            className={n <= rating ? 'star is-on' : 'star'}
-            onClick={() => setRating(n)}
-          >
-            ★
-          </button>
-        ))}
+      <p className="review-form__label">¿Ya la viste? Dejá tu reseña</p>
+      <div className="star-row">
+        <div
+          className="star-input"
+          role="radiogroup"
+          aria-label="Puntaje"
+          onMouseLeave={() => setHover(0)}
+        >
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={rating === n}
+              aria-label={`${n} ${n === 1 ? 'estrella' : 'estrellas'}`}
+              className={n <= shown ? 'star is-on' : 'star'}
+              onMouseEnter={() => setHover(n)}
+              onClick={() => setRating(n)}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+        <span className="star-row__label">{LABELS[shown]}</span>
       </div>
       <textarea
         value={text}
@@ -55,9 +68,9 @@ export default function ReviewForm({ onSubmit }) {
         aria-label="Texto de la reseña"
       />
       <div className="review-form__footer">
-        <span className="mono counter">{text.length}/{MAX_TEXT}</span>
+        <span className="counter">{text.length}/{MAX_TEXT}</span>
         <button className="btn btn--primary" disabled={saving}>
-          {saving ? 'Guardando…' : 'La vi · Guardar reseña'}
+          {saving ? 'Guardando…' : 'Guardar reseña'}
         </button>
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}

@@ -13,11 +13,20 @@ export function rotationFor(index, count, currentRotation) {
   return currentRotation + 360 * 5 + delta;
 }
 
-// Colores de las porciones: fondo y color de texto.
+// Colores de las porciones (fondo y texto). Alternan terciopelo, papel y tinta
+// para que dos porciones vecinas nunca se confundan.
 export const SLICE_COLORS = [
-  { fill: '#8E1B1B', text: '#EFE6D2' },
-  { fill: '#EFE6D2', text: '#1F2226' },
-  { fill: '#C2302A', text: '#EFE6D2' },
-  { fill: '#2C3036', text: '#EFE6D2' },
-  { fill: '#D6A23A', text: '#1F2226' },
+  { fill: '#7A1A17', text: '#F1E6CC' },
+  { fill: '#F1E6CC', text: '#3A231B' },
+  { fill: '#B4302A', text: '#F1E6CC' },
+  { fill: '#2B2420', text: '#E9B54F' },
+  { fill: '#E9B54F', text: '#3A231B' },
 ];
+
+// La última porción toca a la primera: si les tocara el mismo color, cambiamos.
+export function sliceColor(index, count) {
+  const n = SLICE_COLORS.length;
+  let i = index % n;
+  if (count > 1 && index === count - 1 && i === 0) i = 2;
+  return SLICE_COLORS[i];
+}

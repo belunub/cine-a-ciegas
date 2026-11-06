@@ -96,7 +96,7 @@ export default function Lobby({ user, onOpen }) {
             <span>Código de 6 caracteres</span>
             <input
               type="text"
-              className="mono input--code"
+              className="input--code"
               value={code}
               maxLength={6}
               placeholder="K7PX2Q"
@@ -123,13 +123,19 @@ export default function Lobby({ user, onOpen }) {
           <ul className="group-list">
             {groups.map((group) => (
               <li key={group.id}>
-                <button className="group-card" onClick={() => onOpen(group.id)}>
-                  <span className="group-card__name">{group.name}</span>
-                  <span className="mono group-card__meta">
-                    Nº {group.code} · {group.memberIds.length}{' '}
-                    {group.memberIds.length === 1 ? 'persona' : 'personas'}
+                {/* v2: cada grupo es una entrada; el talón lleva el código */}
+                <button className="group-ticket" onClick={() => onOpen(group.id)}>
+                  <span className="group-ticket__main paper notch-right">
+                    <span className="group-ticket__name">{group.name}</span>
+                    <span className="group-ticket__meta">
+                      {group.memberIds.length} {group.memberIds.length === 1 ? 'persona' : 'personas'},
+                      ronda {group.round?.number ?? 1}
+                    </span>
+                    {group.currentMovieId && <span className="badge">Película en cartelera</span>}
                   </span>
-                  {group.currentMovieId && <span className="badge">Función en cartelera</span>}
+                  <span className="group-ticket__stub paper paper--stub notch-left">
+                    <span className="code">{group.code}</span>
+                  </span>
                 </button>
               </li>
             ))}

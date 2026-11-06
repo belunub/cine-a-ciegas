@@ -178,7 +178,9 @@ export async function removeGenre(groupId, genreDocId) {
 
 // Guarda la película que salió en la ruleta y la pone "en cartelera".
 // Usa una transacción para que dos personas no giren a la vez.
-export async function putMovieOnBill(groupId, movie, genre, genreNames, user) {
+// v2: también guarda la ficha completa (elenco, recomendaciones, etc.) para que
+// todo el grupo vea lo mismo aunque TMDB falle después.
+export async function putMovieOnBill(groupId, movie, genre, genreNames, details, user) {
   const groupRef = doc(db, 'groups', groupId);
   const movieRef = doc(collection(db, 'groups', groupId, 'movies'));
 
@@ -198,7 +200,12 @@ export async function putMovieOnBill(groupId, movie, genre, genreNames, user) {
       posterPath: movie.poster_path,
       year: (movie.release_date || '').slice(0, 4),
       voteAverage: movie.vote_average ?? null,
-      genreNames,
+      genreNames: details?.genreNames?.length ? details.genreNames : genreNames,
+      runtime: details?.runtime ?? null,
+      tagline: details?.tagline ?? '',
+      director: details?.director ?? null,
+      cast: details?.cast ?? [],
+      recommendations: details?.recommendations ?? [],
       spunGenre: { id: genre.tmdbId, name: genre.name },
       spunBy: user.uid,
       spunByName: firstName(user),

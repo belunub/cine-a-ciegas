@@ -16,8 +16,9 @@ export default function Header({ user, onHome }) {
 
   return (
     <header className="header">
-      <button className="header__brand" onClick={onHome} aria-label="Ir al inicio">
-        Cine <span>a ciegas</span>
+      <button className="header__brand" onClick={onHome} aria-label="Cine a Ciegas, ir a la boletería">
+        <span className="header__brand-top">Cine</span>
+        <span className="header__brand-bottom">a ciegas</span>
       </button>
       <div className="header__user">
         {user.photoURL && (
