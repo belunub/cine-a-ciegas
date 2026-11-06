@@ -1,0 +1,19 @@
+# Dependencias y build (se regeneran con npm install / npm run build)
+node_modules
+dist
+dist-ssr
+
+# Variables de entorno: NUNCA se suben al repositorio
+.env
+.env.local
+.env.*.local
+
+# Logs y archivos del sistema / editor
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+.vercel
