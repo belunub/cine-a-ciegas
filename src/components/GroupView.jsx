@@ -6,6 +6,7 @@ import Loader from './Loader';
 import Roulette from './Roulette';
 import MovieTicket from './MovieTicket';
 import History from './History';
+import GroupSettings from './GroupSettings';
 import { EmptyBill, LastShow, VetoNotice } from './LastShow';
 
 // Pantalla de un grupo: ruleta, cartelera e historial.
@@ -16,6 +17,7 @@ export default function GroupView({ groupId, user, onExit }) {
   const [movies, setMovies] = useState(null);
   const [error, setError] = useState(null);
   const [joining, setJoining] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // READ en tiempo real del grupo.
   useEffect(
@@ -119,7 +121,16 @@ export default function GroupView({ groupId, user, onExit }) {
     <div className="group">
       <header className="group__header">
         <div className="group__heading">
-          <button className="btn btn--link" onClick={onExit}>Volver a la boletería</button>
+          <nav className="group__nav">
+            <button className="btn btn--link" onClick={onExit}>Volver a la boletería</button>
+            <button
+              className="btn btn--link"
+              onClick={() => setShowSettings((open) => !open)}
+              aria-expanded={showSettings}
+            >
+              Ajustes del grupo
+            </button>
+          </nav>
           <h1 className="display display--xl">{group.name}</h1>
           <ul className="members" aria-label="Integrantes">
             {group.memberIds.map((id) => {
@@ -149,6 +160,15 @@ export default function GroupView({ groupId, user, onExit }) {
         </div>
       </header>
 
+      {showSettings && (
+        <GroupSettings
+          group={group}
+          user={user}
+          onClose={() => setShowSettings(false)}
+          onExit={onExit}
+        />
+      )}
+
       <div className={currentMovie ? 'group-grid has-movie' : 'group-grid'}>
         <section className="panel stage" aria-labelledby="t-ruleta">
           <h2 id="t-ruleta" className="panel__title">La ruleta</h2>
@@ -161,7 +181,7 @@ export default function GroupView({ groupId, user, onExit }) {
         </section>
       </div>
 
-      {movies && <History movies={movies} />}
+      {movies && <History movies={movies} group={group} />}
     </div>
   );
 }

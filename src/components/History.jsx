@@ -1,29 +1,22 @@
 import { posterUrl } from '../lib/tmdb';
+import { averageRating as average, formatScore } from '../lib/stats';
 import Stars from './Stars';
 import { ReviewCard } from './Reviews';
-
-function average(reviews) {
-  const values = Object.values(reviews || {}).map((r) => r.rating);
-  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
-}
+import GroupStats from './GroupStats';
 
 // v2: el historial es una colección de TALONES cortados.
 // Las vistas muestran el promedio; las vetadas, quién las vetó.
 export default function History({ movies }) {
   const past = movies.filter((m) => m.status !== 'cartelera');
-  const seen = past.filter((m) => m.status === 'vista').length;
 
   return (
     <section className="archive" aria-labelledby="t-archivo">
       <div className="archive__head">
         <h2 id="t-archivo" className="panel__title">Archivo</h2>
-        {past.length > 0 && (
-          <p className="archive__count">
-            {seen} {seen === 1 ? 'vista' : 'vistas'}, {past.length - seen}{' '}
-            {past.length - seen === 1 ? 'vetada' : 'vetadas'}
-          </p>
-        )}
       </div>
+
+      {/* v3: estadísticas del grupo */}
+      {past.length > 0 && <GroupStats movies={movies} />}
 
       {past.length === 0 ? (
         <p className="empty">Cuando terminen una función o veten una película, el talón queda guardado acá.</p>
@@ -47,7 +40,7 @@ export default function History({ movies }) {
                         <span className="stub__result stub__result--veto">Vetada por {movie.vetoedByName}</span>
                       ) : (
                         <span className="stub__result">
-                          {avg !== null && <Stars value={avg} />} {avg !== null && avg.toFixed(1)}
+                          {avg !== null && <Stars value={avg} />} {avg !== null && formatScore(avg)}
                         </span>
                       )}
                     </span>

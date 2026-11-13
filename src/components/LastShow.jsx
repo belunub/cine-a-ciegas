@@ -1,11 +1,7 @@
 import { posterUrl } from '../lib/tmdb';
+import { averageRating as average, formatScore } from '../lib/stats';
 import Stars from './Stars';
 import { ReviewCard } from './Reviews';
-
-function average(reviews) {
-  const values = Object.values(reviews || {}).map((r) => r.rating);
-  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
-}
 
 // v2: cuando reseña el último, la película sale de cartelera y acá se REVELAN
 // todas las reseñas juntas. Queda visible hasta que alguien vuelva a girar.
@@ -22,7 +18,7 @@ export function LastShow({ movie }) {
           <h3 className="last-show__title">{movie.title}</h3>
           {avg !== null && (
             <p className="last-show__avg">
-              <span className="last-show__avg-number">{avg.toFixed(1)}</span>
+              <span className="last-show__avg-number">{formatScore(avg)}</span>
               <Stars value={avg} />
               <span className="last-show__avg-label">promedio del grupo</span>
             </p>

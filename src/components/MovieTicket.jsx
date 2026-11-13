@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatRuntime, posterUrl } from '../lib/tmdb';
+import { formatScore } from '../lib/stats';
 import { deleteMyReview, submitReview, vetoMovie } from '../lib/groups';
 import { friendlyError } from '../lib/errors';
 import { useToast } from '../lib/toast';
@@ -8,6 +9,7 @@ import ReviewForm from './ReviewForm';
 import Stars from './Stars';
 import { SealedReview } from './Reviews';
 import { Cast, Recommendations } from './MovieExtras';
+import WatchProviders from './WatchProviders';
 
 function shortName(group, id) {
   return (group.members?.[id]?.name || 'Alguien').split(' ')[0];
@@ -117,7 +119,7 @@ export default function MovieTicket({ movie: rawMovie, group, user }) {
                 {movie.voteAverage ? (
                   <div>
                     <dt>TMDB</dt>
-                    <dd>{movie.voteAverage.toFixed(1)}/10</dd>
+                    <dd>{formatScore(movie.voteAverage)}/10</dd>
                   </div>
                 ) : null}
               </dl>
@@ -130,6 +132,7 @@ export default function MovieTicket({ movie: rawMovie, group, user }) {
                 </ul>
               )}
               <p className="entrada__overview">{movie.overview}</p>
+              <WatchProviders tmdbId={movie.tmdbId} />
             </div>
           </div>
         </div>

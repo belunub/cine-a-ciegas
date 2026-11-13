@@ -6,6 +6,10 @@ Web app para cualquier grupo (familia, amigos, pareja, de a dos o de a muchos) q
 
 Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 
+**Integrantes:** Milagros Paez y María Belén Valcarce
+
+**App publicada:** https://cine-a-ciegas.vercel.app
+
 ---
 
 ## Tecnologías
@@ -26,7 +30,10 @@ Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 - Veto: cada integrante puede vetar una vez por ronda, siempre que nadie haya reseñado todavía. Pide confirmación antes de usarlo.
 - Reseñas **selladas**: puntaje de 1 a 5 estrellas más un comentario. Nadie ve lo que escribieron los demás hasta que reseña todo el grupo; entonces se revelan juntas, con el promedio.
 - Al terminar la ronda se recargan los vetos.
-- Archivo de películas vistas (con promedio) y vetadas (con quién las vetó).
+- Archivo de películas vistas (con promedio) y vetadas (con quién las vetó), con **estadísticas del grupo**.
+- **Dónde verla en Argentina:** plataformas donde está incluida, para alquilar o comprar (datos de JustWatch vía TMDB).
+- **Filtros de la función:** duración máxima y época, elegidos por el grupo.
+- **Ajustes del grupo:** cambiar el nombre, salir del grupo o eliminarlo (solo quien lo creó).
 - Mensajes de carga, éxito y error. Diseño adaptable a celular.
 
 ## Dónde se conecta Firebase
@@ -45,8 +52,8 @@ Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 |---|---|
 | **Consultar** | `watchMyGroups`, `watchGroup`, `watchGenres`, `watchMovies` |
 | **Agregar** | `createGroup`, `addGenre`, `putMovieOnBill` |
-| **Modificar** | `joinGroup`, `vetoMovie`, `submitReview` |
-| **Eliminar** | `removeGenre` (borra un documento), `deleteMyReview` (borra un campo) |
+| **Modificar** | `joinGroup`, `vetoMovie`, `submitReview`, `renameGroup`, `updateGroupFilters`, `leaveGroup` |
+| **Eliminar** | `removeGenre` (borra un documento), `deleteMyReview` (borra un campo), `deleteGroup` (borra el grupo con sus géneros y películas en un `writeBatch`) |
 
 ## Datos guardados en Firestore
 
@@ -57,6 +64,7 @@ groups/{CODIGO}
   members: { uid: { name, photo } }
   currentMovieId          ← película en cartelera (o null)
   round: { number, vetoesUsed: [uid, ...] }
+  filters: { maxRuntime, era }   ← desde v3
 
 groups/{CODIGO}/genres/{idGeneroTMDB}
   tmdbId, name, addedBy, addedByName, createdAt
@@ -139,7 +147,15 @@ Las reglas de Firestore se publican en Firebase: desplegar en Vercel no las actu
 - **Veto con confirmación** dentro de la entrada, sin ventanas del navegador.
 - **Rediseño:** la película es una entrada troquelada (cuerpo + talón perforado) que se "imprime" al salir; reseñar pone un sello de "Vista"; la ruleta tiene un aro de bombitas que se encienden en cadena al girar; el login es un cartel de marquesina; los grupos y el archivo son entradas y talones de papel con textura.
 - Texto de bienvenida más inclusivo ("Armá un grupo con quien quieras ver películas").
-- Corrección: los nombres de géneros de la mitad izquierda de la ruleta ya no aparecen de cabeza, y dos porciones vecinas nunca tienen el mismo color.
+- Texto de bienvenida más inclusivo ("Armá un grupo con quien quieras ver películas").
+- Corrección: los nombres de géneros de la mitad izquierda de.
+
+### v3: versión final
+- **Dónde verla en Argentina:** logos de las plataformas (incluida, alquiler, compra), consultados en el momento a TMDB/JustWatch porque cambian seguido.
+- **Filtros de la función:** "¿Cuánto tiempo tienen?" (sin límite, hasta 2 h, hasta 1 h 40) y época (antes de 1990, 1990 a 2009, desde 2010). Se guardan en el grupo y se aplican al buscar en TMDB.
+- **Ajustes del grupo:** renombrar, salir (si estaba la película en cartelera y ya reseñaron todos los que quedan, la ronda se cierra) y eliminar el grupo con todo su contenido.
+- **Datos de la sala:** estadísticas del grupo en un cartel de letras intercambiables, como los de las marquesinas: películas vistas y vetadas, género que más salió, mejor puntuada, la mano más dura y la más generosa, y quién vetó más.
+- Puntajes con coma decimal (formato argentino).
 
 ---
 

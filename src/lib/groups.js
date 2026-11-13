@@ -13,12 +13,15 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -147,6 +150,79 @@ export async function joinGroup(rawCode, user) {
   });
 
   return code;
+}
+
+// ───────────── v3: ADMINISTRAR EL GRUPO (UPDATE / DELETE) ─────────────
+
+export async function renameGroup(groupId, name) {
+  await updateDoc(doc(db, 'groups', groupId), { name });
+}
+
+// Filtros de la función: { maxRuntime: 0 | 100 | 120, era: 'all' | 'classic' | ... }
+export async function updateGroupFilters(groupId, filters) {
+  await updateDoc(doc(db, 'groups', groupId), { filters });
+}
+
+// Salir del grupo. Si había una película en cartelera y con esta salida
+// ya reseñaron todos los que quedan, la ronda se cierra.
+export async function leaveGroup(groupId, uid) {
+  const groupRef = doc(db, 'groups', groupId);
+
+  await runTransaction(db, async (tx) => {
+    const groupSnap = await tx.get(groupRef);
+    if (!groupSnap.exists()) return;
+    const group = groupSnap.data();
+    if (group.ownerId === uid) {
+      throw new Error('Quien creó el grupo no puede salir: puede eliminarlo.');
+    }
+
+    const remaining = group.memberIds.filter((id) => id !== uid);
+    let movieRef = null;
+    let movie = null;
+    if (group.currentMovieId) {
+      movieRef = doc(db, 'groups', groupId, 'movies', group.currentMovieId);
+      movie = (await tx.get(movieRef)).data();
+    }
+
+    const update = {
+      memberIds: remaining,
+      [`members.${uid}`]: deleteField(),
+      'round.vetoesUsed': (group.round?.vetoesUsed || []).filter((id) => id !== uid),
+    };
+
+    if (movie && movie.status === 'cartelera') {
+      // Su reseña (si había) se descarta, para que no cuente en el promedio.
+      const reviews = { ...(movie.reviews || {}) };
+      delete reviews[uid];
+      const everyoneReviewed = remaining.length > 0 && remaining.every((id) => reviews[id]);
+      tx.update(movieRef, {
+        [`reviews.${uid}`]: deleteField(),
+        ...(everyoneReviewed ? { status: 'vista', closedAt: serverTimestamp() } : {}),
+      });
+      if (everyoneReviewed) {
+        update.currentMovieId = null;
+        update.round = { number: (group.round?.number ?? 1) + 1, vetoesUsed: [] };
+        delete update['round.vetoesUsed'];
+      }
+    }
+
+    tx.update(groupRef, update);
+  });
+}
+
+// Eliminar el grupo (solo quien lo creó). Firestore no borra las subcolecciones
+// solas, así que primero borramos géneros y películas, y al final el grupo.
+export async function deleteGroup(groupId) {
+  const [genresSnap, moviesSnap] = await Promise.all([
+    getDocs(collection(db, 'groups', groupId, 'genres')),
+    getDocs(collection(db, 'groups', groupId, 'movies')),
+  ]);
+
+  const batch = writeBatch(db);
+  genresSnap.docs.forEach((d) => batch.delete(d.ref));
+  moviesSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, 'groups', groupId));
+  await batch.commit();
 }
 
 // ───────────── GÉNEROS DE LA RULETA (CREATE / DELETE) ─────────────

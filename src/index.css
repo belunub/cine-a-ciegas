@@ -1897,6 +1897,237 @@ input[aria-invalid='true'] {
   }
 }
 
+/* ═════════════════ v3 ═════════════════ */
+
+/* Navegación del grupo */
+.group__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+/* Filtros de la función: botones segmentados tipo perilla de proyector */
+.filters {
+  display: grid;
+  gap: 12px;
+}
+
+.filter {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.filter legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(241, 230, 204, 0.2);
+}
+
+.segmented--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.segmented label {
+  position: relative;
+  padding: 7px 10px;
+  text-align: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--texto-suave);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmented label:hover {
+  color: var(--texto);
+}
+
+.segmented label.is-on {
+  background: var(--papel);
+  color: var(--tinta);
+  font-weight: 600;
+}
+
+.segmented input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented label:has(input:focus-visible) {
+  outline: 3px solid var(--bombita);
+  outline-offset: 1px;
+}
+
+.filter:disabled .segmented {
+  opacity: 0.5;
+}
+
+.filter:disabled label {
+  cursor: not-allowed;
+}
+
+/* Dónde verla */
+.watch {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(58, 35, 27, 0.15);
+}
+
+.watch__title {
+  font-family: var(--font-marquee);
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.watch__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.watch__label {
+  min-width: 92px;
+  font-size: 0.8rem;
+  color: var(--tinta-suave);
+}
+
+.watch__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.watch__logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(58, 35, 27, 0.25), 0 2px 4px rgba(58, 35, 27, 0.2);
+}
+
+.watch__note,
+.watch__credit {
+  font-size: 0.82rem;
+  color: var(--tinta-suave);
+}
+
+.watch__credit a {
+  color: var(--terciopelo);
+}
+
+/* Ajustes del grupo */
+.settings__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.settings__rename {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px 10px;
+}
+
+.settings__rename .form-error {
+  grid-column: 1 / -1;
+}
+
+.settings__danger {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding-top: 16px;
+  border-top: 1px solid rgba(241, 230, 204, 0.1);
+}
+
+.settings__note {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.settings__warning {
+  max-width: 60ch;
+  color: #ffb3a8;
+}
+
+.actions--start {
+  justify-content: flex-start;
+}
+
+.btn--danger {
+  background: #c23a2e;
+  color: var(--papel);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #a22c22;
+}
+
+.btn--danger-outline {
+  background: transparent;
+  border-color: rgba(255, 157, 143, 0.6);
+  color: #ffb3a8;
+}
+
+.btn--danger-outline:hover:not(:disabled) {
+  border-color: #ffb3a8;
+}
+
+@media (max-width: 520px) {
+  .settings__rename {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Datos de la sala: cartel de letras intercambiables */
+.letterboard {
+  display: grid;
+  padding: 14px 22px;
+  border-radius: 4px;
+  /* Ranuras del cartel alineadas con cada renglón (2rem) */
+  background: repeating-linear-gradient(180deg, #151313 0 calc(2rem - 2px), #0b0909 calc(2rem - 2px) 2rem)
+    content-box,
+    #151313;
+  box-shadow:
+    0 0 0 5px #2b1f1b,
+    0 0 0 7px var(--terciopelo),
+    0 16px 30px rgba(0, 0, 0, 0.4);
+  margin: 6px 7px 10px;
+}
+
+.letterboard__line {
+  font-family: var(--font-marquee);
+  font-weight: 700;
+  font-size: clamp(1rem, 2.6vw, 1.2rem);
+  line-height: 2rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #f4ecdb;
+}
+
 /* ───────── Movimiento reducido ───────── */
 
 @media (prefers-reduced-motion: reduce) {

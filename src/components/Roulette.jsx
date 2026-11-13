@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Wheel from './Wheel';
 import GenreManager from './GenreManager';
+import FunctionFilters from './FunctionFilters';
 import { rotationFor } from '../lib/wheel';
 import { getMovieDetails, getMovieGenres, pickRandomMovie } from '../lib/tmdb';
 import { putMovieOnBill } from '../lib/groups';
@@ -62,7 +63,7 @@ export default function Roulette({ group, genres, movies, user }) {
     const excludeIds = (movies || []).map((m) => m.tmdbId);
 
     // Mientras la ruleta gira, buscamos la película y su ficha completa.
-    const moviePromise = pickRandomMovie(genre.tmdbId, excludeIds);
+    const moviePromise = pickRandomMovie(genre.tmdbId, excludeIds, group.filters);
     const detailsPromise = moviePromise.then((m) => getMovieDetails(m.id)).catch(() => null);
     moviePromise.catch(() => {}); // el error se maneja abajo
 
@@ -99,6 +100,8 @@ export default function Roulette({ group, genres, movies, user }) {
       <p className="roulette__result" aria-live="polite">
         {winner && !spinning ? <>Salió <strong>{winner.name}</strong></> : ' '}
       </p>
+
+      <FunctionFilters group={group} disabled={spinning || hasMovie} />
 
       <button className="btn btn--primary btn--big btn--block" onClick={handleSpin} disabled={!canSpin}>
         {spinning ? 'Girando…' : 'Girar la ruleta'}
