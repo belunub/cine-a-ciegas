@@ -2,10 +2,13 @@ import { posterUrl } from '../lib/tmdb';
 import { averageRating as average, formatScore } from '../lib/stats';
 import Stars from './Stars';
 import { ReviewCard } from './Reviews';
+import ReactionBar from './ReactionBar';
+import MovieChat from './MovieChat';
 
 // v2: cuando reseña el último, la película sale de cartelera y acá se REVELAN
 // todas las reseñas juntas. Queda visible hasta que alguien vuelva a girar.
-export function LastShow({ movie }) {
+// v4: se puede reaccionar a las reseñas de los demás y seguir la charla.
+export function LastShow({ movie, groupId, user }) {
   const avg = average(movie.reviews);
   const reviews = Object.entries(movie.reviews || {});
 
@@ -28,9 +31,13 @@ export function LastShow({ movie }) {
 
       <div className="reveal">
         {reviews.map(([id, review], i) => (
-          <ReviewCard key={id} review={review} style={{ animationDelay: `${150 + i * 160}ms` }} />
+          <ReviewCard key={id} review={review} style={{ animationDelay: `${150 + i * 160}ms` }}>
+            <ReactionBar groupId={groupId} movie={movie} reviewerUid={id} user={user} />
+          </ReviewCard>
         ))}
       </div>
+
+      <MovieChat groupId={groupId} movie={movie} user={user} />
 
       <p className="last-show__next">Los vetos se recargaron. Giren la ruleta para la próxima función.</p>
     </div>

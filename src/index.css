@@ -830,8 +830,16 @@ input[aria-invalid='true'] {
 }
 
 /* En celular, si hay película, la cartelera va primero. */
-.group-grid.has-movie > .panel:last-child {
+.group-grid.has-movie > .group-grid__bill {
   order: -1;
+}
+
+/* v4: columna izquierda con la ruleta y el muro */
+.group-grid__side {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+  min-width: 0;
 }
 
 @media (min-width: 960px) {
@@ -840,7 +848,7 @@ input[aria-invalid='true'] {
     align-items: start;
   }
 
-  .group-grid.has-movie > .panel:last-child {
+  .group-grid.has-movie > .group-grid__bill {
     order: 0;
   }
 }
@@ -2126,6 +2134,258 @@ input[aria-invalid='true'] {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #f4ecdb;
+}
+
+/* ═════════════════ v4: interacción entre usuarios ═════════════════ */
+
+/* Muro del grupo: una línea de tiempo con un "agujero de perforado" por publicación */
+.feed__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  max-height: 460px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sala-linea) transparent;
+}
+
+.feed__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: 10px;
+  padding: 0 0 14px;
+}
+
+/* línea punteada que une las publicaciones */
+.feed__item::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: 0;
+  border-left: 2px dotted rgba(241, 230, 204, 0.18);
+}
+
+.feed__item:last-child::before {
+  display: none;
+}
+
+.feed__icon {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2b2624;
+  box-shadow: inset 0 0 0 1px rgba(233, 181, 79, 0.35);
+  font-size: 0.95rem;
+}
+
+.feed__text {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  padding-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.feed__text strong {
+  color: var(--luz);
+}
+
+.feed__text em {
+  font-family: var(--font-serif);
+  font-style: normal;
+  color: var(--papel);
+}
+
+.feed__time {
+  font-family: var(--font-print);
+  font-size: 0.72rem;
+  color: var(--texto-suave);
+}
+
+/* Reacciones */
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 28px;
+  padding: 2px 6px;
+  border: 1px solid rgba(58, 35, 27, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+  font-size: 0.88rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.reaction:hover:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.reaction.is-on {
+  background: var(--bombita);
+  border-color: var(--oro-tinta);
+}
+
+.reaction.is-static {
+  cursor: default;
+}
+
+.reaction__count {
+  font-family: var(--font-print);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tinta);
+}
+
+.reactions--readonly {
+  font-size: 0.9rem;
+}
+
+/* Charla de la función */
+.chat {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.chat__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-marquee);
+  font-weight: 800;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.chat__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--telon);
+  color: var(--papel);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.chat__empty {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.chat__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.bubble {
+  justify-self: start;
+  max-width: min(85%, 420px);
+  padding: 8px 12px 9px;
+  border-radius: 4px 12px 12px 12px;
+  background-color: var(--papel);
+  background-image: var(--grain);
+  color: var(--tinta);
+}
+
+.bubble--mine {
+  justify-self: end;
+  border-radius: 12px 4px 12px 12px;
+  background-color: #f3d9a4;
+}
+
+.bubble__meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.75rem;
+}
+
+.bubble__name {
+  font-weight: 700;
+}
+
+.bubble__time {
+  color: var(--tinta-suave);
+}
+
+.bubble__text {
+  font-size: 0.92rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.bubble__delete {
+  padding: 0;
+  margin-top: 2px;
+  border: none;
+  background: none;
+  color: var(--terciopelo);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chat__form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat__form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55em 0.75em;
+}
+
+/* La charla dentro de un talón de papel */
+.chat--paper {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dotted rgba(58, 35, 27, 0.35);
+}
+
+.chat--paper .chat__title {
+  font-size: 1.15rem;
+}
+
+.chat--paper .chat__empty {
+  color: var(--tinta-suave);
+}
+
+.chat--paper .bubble {
+  max-width: 92%;
+  background-color: #f8f1df;
+}
+
+.chat--paper .bubble--mine {
+  background-color: #f0d49c;
+}
+
+.chat--paper .chat__form input {
+  background: #fbf5e6;
+  border-color: rgba(58, 35, 27, 0.25);
 }
 
 /* ───────── Movimiento reducido ───────── */

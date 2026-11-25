@@ -1,7 +1,7 @@
 import Stars from './Stars';
 
-// Reseña visible.
-export function ReviewCard({ review, style }) {
+// Reseña visible. v4: "children" permite sumarle abajo la barra de reacciones.
+export function ReviewCard({ review, style, children }) {
   return (
     <div className="review-card" style={style}>
       <p className="review-card__head">
@@ -9,6 +9,7 @@ export function ReviewCard({ review, style }) {
         <Stars value={review.rating} />
       </p>
       <p className="review-card__text">{review.text}</p>
+      {children}
     </div>
   );
 }

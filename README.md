@@ -34,6 +34,9 @@ Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 - **Dónde verla en Argentina:** plataformas donde está incluida, para alquilar o comprar (datos de JustWatch vía TMDB).
 - **Filtros de la función:** duración máxima y época, elegidos por el grupo.
 - **Ajustes del grupo:** cambiar el nombre, salir del grupo o eliminarlo (solo quien lo creó).
+- **Muro del grupo** (v4): publica cada interacción entre integrantes (quién giró, vetó, reseñó, comentó o reaccionó).
+- **Reacciones** (v4) con emojis a las reseñas reveladas de los demás.
+- **Charla de la función** (v4): comentarios del grupo en cada película, con opción de borrar los propios.
 - Mensajes de carga, éxito y error. Diseño adaptable a celular.
 
 ## Dónde se conecta Firebase
@@ -50,10 +53,10 @@ Trabajo Práctico 2 · Desarrollo Frontend II · UADE · 2026
 
 | Operación | Dónde |
 |---|---|
-| **Consultar** | `watchMyGroups`, `watchGroup`, `watchGenres`, `watchMovies` |
-| **Agregar** | `createGroup`, `addGenre`, `putMovieOnBill` |
-| **Modificar** | `joinGroup`, `vetoMovie`, `submitReview`, `renameGroup`, `updateGroupFilters`, `leaveGroup` |
-| **Eliminar** | `removeGenre` (borra un documento), `deleteMyReview` (borra un campo), `deleteGroup` (borra el grupo con sus géneros y películas en un `writeBatch`) |
+| **Consultar** | `watchMyGroups`, `watchGroup`, `watchGenres`, `watchMovies`, `watchActivity`, `watchComments` |
+| **Agregar** | `createGroup`, `addGenre`, `putMovieOnBill`, `addComment`, `logActivity` |
+| **Modificar** | `joinGroup`, `vetoMovie`, `submitReview`, `renameGroup`, `updateGroupFilters`, `leaveGroup`, `toggleReaction` |
+| **Eliminar** | `removeGenre` (borra un documento), `deleteMyReview` (borra un campo), `deleteGroup` (borra el grupo con todo su contenido en un `writeBatch`), `deleteComment` |
 
 ## Datos guardados en Firestore
 
@@ -76,6 +79,13 @@ groups/{CODIGO}/movies/{id}
   status: "cartelera" | "vista" | "vetada"
   vetoedBy, vetoedByName
   reviews: { uid: { rating, text, name, photo, createdAt } }
+  reactions: { uidDeLaReseña: { uidQueReacciona: emoji } }   ← desde v4
+
+groups/{CODIGO}/movies/{id}/comments/{id}   ← desde v4
+  text, authorUid, authorName, authorPhoto, createdAt
+
+groups/{CODIGO}/activity/{id}               ← desde v4
+  type, actorUid, actorName, createdAt, (movieTitle, genreName, emoji, excerpt…)
 ```
 
 ---
@@ -146,9 +156,7 @@ Las reglas de Firestore se publican en Firebase: desplegar en Vercel no las actu
 - **Reseñas selladas y revelación:** las reseñas ajenas se ven "dadas vuelta" hasta que reseña todo el grupo; después se revelan juntas con el promedio.
 - **Veto con confirmación** dentro de la entrada, sin ventanas del navegador.
 - **Rediseño:** la película es una entrada troquelada (cuerpo + talón perforado) que se "imprime" al salir; reseñar pone un sello de "Vista"; la ruleta tiene un aro de bombitas que se encienden en cadena al girar; el login es un cartel de marquesina; los grupos y el archivo son entradas y talones de papel con textura.
-- Texto de bienvenida más inclusivo ("Armá un grupo con quien quieras ver películas").
-- Texto de bienvenida más inclusivo ("Armá un grupo con quien quieras ver películas").
-- Corrección: los nombres de géneros de la mitad izquierda de.
+- Corrección: los nombres de géneros de la mitad izquierda de la ruleta ya no aparecen de cabeza, y dos porciones vecinas nunca tienen el mismo color.
 
 ### v3: versión final
 - **Dónde verla en Argentina:** logos de las plataformas (incluida, alquiler, compra), consultados en el momento a TMDB/JustWatch porque cambian seguido.
@@ -156,6 +164,13 @@ Las reglas de Firestore se publican en Firebase: desplegar en Vercel no las actu
 - **Ajustes del grupo:** renombrar, salir (si estaba la película en cartelera y ya reseñaron todos los que quedan, la ronda se cierra) y eliminar el grupo con todo su contenido.
 - **Datos de la sala:** estadísticas del grupo en un cartel de letras intercambiables, como los de las marquesinas: películas vistas y vetadas, género que más salió, mejor puntuada, la mano más dura y la más generosa, y quién vetó más.
 - Puntajes con coma decimal (formato argentino).
+
+### v4: interacción entre usuarios (instancia de final)
+A partir de la devolución del TP2 ("seguir extendiendo funcionalidades similares a una red social: interacciones entre usuarios, publicaciones de interacciones"):
+- **Muro del grupo:** cada interacción se publica como un documento en `activity` y se muestra en tiempo real (`onSnapshot`), con el tiempo relativo ("hace 5 min") que se actualiza con un `setInterval` dentro de un `useEffect`.
+- **Reacciones:** cada integrante puede reaccionar con un emoji a la reseña revelada de otra persona; tocar el mismo emoji lo saca. Las reacciones también se publican en el muro.
+- **Charla de la función:** comentarios en la película en cartelera, en "Función terminada" y en cada talón del Archivo. Cada uno puede borrar sus comentarios.
+- **Reglas de Firestore** nuevas para `comments` y `activity`: solo miembros, cada uno publica a su nombre, y las publicaciones del muro no se editan.
 
 ---
 

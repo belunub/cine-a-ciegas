@@ -40,7 +40,7 @@ export default function GenreManager({ groupId, user, genres, allGenres, genresE
   async function handleRemove(genre) {
     setRemovingId(genre.id);
     try {
-      await removeGenre(groupId, genre.id);
+      await removeGenre(groupId, genre, user);
       notify(`Sacaste ${genre.name} de la ruleta.`);
     } catch (err) {
       notify(friendlyError(err), 'error');

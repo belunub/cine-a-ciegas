@@ -7,6 +7,7 @@ import Roulette from './Roulette';
 import MovieTicket from './MovieTicket';
 import History from './History';
 import GroupSettings from './GroupSettings';
+import ActivityFeed from './ActivityFeed';
 import { EmptyBill, LastShow, VetoNotice } from './LastShow';
 
 // Pantalla de un grupo: ruleta, cartelera e historial.
@@ -113,7 +114,7 @@ export default function GroupView({ groupId, user, onExit }) {
   if (movies === null) bill = <Loader text="Cargando la cartelera…" />;
   else if (currentMovie) bill = <MovieTicket movie={currentMovie} group={group} user={user} />;
   else if (group.currentMovieId) bill = <Loader text="Trayendo la película…" />;
-  else if (showLastShow) bill = <LastShow movie={latest} />;
+  else if (showLastShow) bill = <LastShow movie={latest} groupId={group.id} user={user} />;
   else if (showVeto) bill = <VetoNotice movie={latest} />;
   else bill = <EmptyBill />;
 
@@ -170,18 +171,23 @@ export default function GroupView({ groupId, user, onExit }) {
       )}
 
       <div className={currentMovie ? 'group-grid has-movie' : 'group-grid'}>
-        <section className="panel stage" aria-labelledby="t-ruleta">
-          <h2 id="t-ruleta" className="panel__title">La ruleta</h2>
-          <Roulette group={group} genres={genres} movies={movies} user={user} />
-        </section>
+        <div className="group-grid__side">
+          <section className="panel stage" aria-labelledby="t-ruleta">
+            <h2 id="t-ruleta" className="panel__title">La ruleta</h2>
+            <Roulette group={group} genres={genres} movies={movies} user={user} />
+          </section>
 
-        <section className="panel" aria-labelledby="t-cartelera">
+          {/* v4: muro con las interacciones del grupo */}
+          <ActivityFeed groupId={group.id} />
+        </div>
+
+        <section className="panel group-grid__bill" aria-labelledby="t-cartelera">
           <h2 id="t-cartelera" className="panel__title">En cartelera</h2>
           {bill}
         </section>
       </div>
 
-      {movies && <History movies={movies} group={group} />}
+      {movies && <History movies={movies} groupId={group.id} user={user} />}
     </div>
   );
 }

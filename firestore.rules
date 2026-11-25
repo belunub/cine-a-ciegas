@@ -7,11 +7,17 @@ rules_version = '2';
 //  - Un grupo se puede LEER por su código (para poder unirse), pero solo
 //    sus miembros pueden modificarlo, y solo ellos ven sus géneros y películas.
 //  - Alguien que no es miembro solo puede agregarse a sí mismo al grupo.
+//  - v4: comentarios y muro de actividad, solo para miembros.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() {
       return request.auth != null;
+    }
+
+    function isOwnerOf(groupId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId == request.auth.uid;
     }
 
     function isMemberOf(groupId) {
@@ -53,6 +59,28 @@ service cloud.firestore {
       // Películas (cartelera e historial): solo miembros.
       match /movies/{movieId} {
         allow read, write: if isMemberOf(groupId);
+
+        // v4: charla de cada película.
+        //  - Leer y comentar: miembros, y solo con su propio nombre (authorUid).
+        //  - Borrar: quien escribió el comentario, o quien creó el grupo (al eliminarlo).
+        match /comments/{commentId} {
+          allow read: if isMemberOf(groupId);
+          allow create: if isMemberOf(groupId)
+            && request.resource.data.authorUid == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() <= 200;
+          allow delete: if isMemberOf(groupId)
+            && (resource.data.authorUid == request.auth.uid || isOwnerOf(groupId));
+        }
+      }
+
+      // v4: muro de actividad. Las publicaciones no se editan:
+      // se pueden leer y crear (a nombre propio), y solo se borran al eliminar el grupo.
+      match /activity/{activityId} {
+        allow read: if isMemberOf(groupId);
+        allow create: if isMemberOf(groupId)
+          && request.resource.data.actorUid == request.auth.uid;
+        allow delete: if isOwnerOf(groupId);
       }
     }
   }

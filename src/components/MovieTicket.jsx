@@ -10,6 +10,7 @@ import Stars from './Stars';
 import { SealedReview } from './Reviews';
 import { Cast, Recommendations } from './MovieExtras';
 import WatchProviders from './WatchProviders';
+import MovieChat from './MovieChat';
 
 function shortName(group, id) {
   return (group.members?.[id]?.name || 'Alguien').split(' ')[0];
@@ -206,6 +207,9 @@ export default function MovieTicket({ movie: rawMovie, group, user }) {
           </div>
         </div>
       </article>
+
+      {/* v4: charla del grupo sobre la película en cartelera */}
+      <MovieChat groupId={group.id} movie={movie} user={user} />
 
       <Cast cast={movie.cast} />
       <Recommendations items={movie.recommendations} />

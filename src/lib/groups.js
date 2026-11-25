@@ -6,14 +6,18 @@
 //   groups/{CODIGO}                    → el grupo (nombre, miembros, ronda)
 //   groups/{CODIGO}/genres/{idGenero}  → porciones de la ruleta
 //   groups/{CODIGO}/movies/{id}        → películas: en cartelera, vistas o vetadas
+//   groups/{CODIGO}/movies/{id}/comments/{id} → v4: charla de cada película
+//   groups/{CODIGO}/activity/{id}      → v4: muro con las interacciones del grupo
 // ─────────────────────────────────────────────────────────────
 import {
+  addDoc,
   arrayUnion,
   collection,
   deleteDoc,
   deleteField,
   doc,
   getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -48,6 +52,94 @@ function memberInfo(user) {
 
 function toMillis(value) {
   return value?.toMillis ? value.toMillis() : 0;
+}
+
+// ───────────── v4: MURO DE ACTIVIDAD ─────────────
+// Cada interacción importante se "publica" como un documento en
+// groups/{CODIGO}/activity. Se escribe DESPUÉS de que la acción salió bien,
+// y si falla no frena nada (por eso el .catch): el muro es un extra.
+//   type: 'create' | 'join' | 'genre_add' | 'genre_remove' | 'spin' | 'veto' |
+//         'review' | 'reveal' | 'comment' | 'reaction' | 'rename' | 'leave'
+export function logActivity(groupId, user, type, extra = {}) {
+  return addDoc(collection(db, 'groups', groupId, 'activity'), {
+    type,
+    actorUid: user.uid,
+    actorName: firstName(user),
+    createdAt: serverTimestamp(),
+    ...extra,
+  }).catch((err) => console.warn('No se pudo publicar en el muro:', err));
+}
+
+// Últimas 40 publicaciones del muro, de la más nueva a la más vieja.
+export function watchActivity(groupId, onData, onError) {
+  const q = query(
+    collection(db, 'groups', groupId, 'activity'),
+    orderBy('createdAt', 'desc'),
+    limit(40),
+  );
+  return onSnapshot(
+    q,
+    (snap) =>
+      onData(snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))),
+    onError,
+  );
+}
+
+// ───────────── v4: CHARLA DE CADA PELÍCULA (CREATE / READ / DELETE) ─────────────
+
+export function watchComments(groupId, movieId, onData, onError) {
+  const q = query(
+    collection(db, 'groups', groupId, 'movies', movieId, 'comments'),
+    orderBy('createdAt', 'asc'),
+  );
+  return onSnapshot(
+    q,
+    (snap) =>
+      onData(snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))),
+    onError,
+  );
+}
+
+export async function addComment(groupId, movie, text, user) {
+  await addDoc(collection(db, 'groups', groupId, 'movies', movie.id, 'comments'), {
+    text,
+    authorUid: user.uid,
+    authorName: firstName(user),
+    authorPhoto: user.photoURL || null,
+    createdAt: serverTimestamp(),
+  });
+  const excerpt = text.length > 70 ? `${text.slice(0, 69)}…` : text;
+  logActivity(groupId, user, 'comment', { movieTitle: movie.title, excerpt });
+}
+
+export async function deleteComment(groupId, movieId, commentId) {
+  await deleteDoc(doc(db, 'groups', groupId, 'movies', movieId, 'comments', commentId));
+}
+
+// ───────────── v4: REACCIONES A LAS RESEÑAS (UPDATE) ─────────────
+// Se guardan en la película: reactions.{quienEscribióLaReseña}.{quienReacciona} = emoji
+// Tocar el mismo emoji otra vez lo saca.
+export const REACTIONS = [
+  { emoji: '🍿', label: 'Pochoclo' },
+  { emoji: '😂', label: 'Me hizo reír' },
+  { emoji: '😱', label: '¡No puede ser!' },
+  { emoji: '😭', label: 'Me emocionó' },
+  { emoji: '🙄', label: 'Ni ahí' },
+];
+
+export async function toggleReaction(groupId, movie, reviewerUid, emoji, user) {
+  const current = movie.reactions?.[reviewerUid]?.[user.uid];
+  const removing = current === emoji;
+  await updateDoc(doc(db, 'groups', groupId, 'movies', movie.id), {
+    [`reactions.${reviewerUid}.${user.uid}`]: removing ? deleteField() : emoji,
+  });
+  if (!removing) {
+    logActivity(groupId, user, 'reaction', {
+      emoji,
+      movieTitle: movie.title,
+      targetName: movie.reviews?.[reviewerUid]?.name || 'alguien',
+    });
+  }
 }
 
 // ───────────── CONSULTAS EN TIEMPO REAL (READ) ─────────────
@@ -123,7 +215,10 @@ export async function createGroup(name, user) {
       return true;
     });
 
-    if (created) return code;
+    if (created) {
+      logActivity(code, user, 'create', { groupName: name });
+      return code;
+    }
   }
   throw new Error('No pudimos generar un código para el grupo. Probá de nuevo.');
 }
@@ -133,12 +228,12 @@ export async function joinGroup(rawCode, user) {
   const code = rawCode.trim().toUpperCase();
   const ref = doc(db, 'groups', code);
 
-  await runTransaction(db, async (tx) => {
+  const joined = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No existe un grupo con ese código.');
 
     const group = snap.data();
-    if (group.memberIds.includes(user.uid)) return; // ya era miembro
+    if (group.memberIds.includes(user.uid)) return false; // ya era miembro
     if (group.memberIds.length >= MAX_MEMBERS) {
       throw new Error(`Este grupo está completo (máximo ${MAX_MEMBERS} personas).`);
     }
@@ -147,15 +242,18 @@ export async function joinGroup(rawCode, user) {
       memberIds: arrayUnion(user.uid),
       [`members.${user.uid}`]: memberInfo(user),
     });
+    return true;
   });
 
+  if (joined) logActivity(code, user, 'join');
   return code;
 }
 
 // ───────────── v3: ADMINISTRAR EL GRUPO (UPDATE / DELETE) ─────────────
 
-export async function renameGroup(groupId, name) {
+export async function renameGroup(groupId, name, user) {
   await updateDoc(doc(db, 'groups', groupId), { name });
+  logActivity(groupId, user, 'rename', { groupName: name });
 }
 
 // Filtros de la función: { maxRuntime: 0 | 100 | 120, era: 'all' | 'classic' | ... }
@@ -165,8 +263,11 @@ export async function updateGroupFilters(groupId, filters) {
 
 // Salir del grupo. Si había una película en cartelera y con esta salida
 // ya reseñaron todos los que quedan, la ronda se cierra.
-export async function leaveGroup(groupId, uid) {
+export async function leaveGroup(groupId, user) {
+  const uid = user.uid;
   const groupRef = doc(db, 'groups', groupId);
+  // Se publica ANTES de salir: después ya no tendría permiso para escribir en el muro.
+  await logActivity(groupId, user, 'leave');
 
   await runTransaction(db, async (tx) => {
     const groupSnap = await tx.get(groupRef);
@@ -213,14 +314,21 @@ export async function leaveGroup(groupId, uid) {
 // Eliminar el grupo (solo quien lo creó). Firestore no borra las subcolecciones
 // solas, así que primero borramos géneros y películas, y al final el grupo.
 export async function deleteGroup(groupId) {
-  const [genresSnap, moviesSnap] = await Promise.all([
+  const [genresSnap, moviesSnap, activitySnap] = await Promise.all([
     getDocs(collection(db, 'groups', groupId, 'genres')),
     getDocs(collection(db, 'groups', groupId, 'movies')),
+    getDocs(collection(db, 'groups', groupId, 'activity')),
   ]);
+  // v4: cada película puede tener su charla (comentarios) adentro.
+  const commentSnaps = await Promise.all(
+    moviesSnap.docs.map((d) => getDocs(collection(d.ref, 'comments'))),
+  );
 
   const batch = writeBatch(db);
   genresSnap.docs.forEach((d) => batch.delete(d.ref));
+  commentSnaps.forEach((snap) => snap.docs.forEach((d) => batch.delete(d.ref)));
   moviesSnap.docs.forEach((d) => batch.delete(d.ref));
+  activitySnap.docs.forEach((d) => batch.delete(d.ref));
   batch.delete(doc(db, 'groups', groupId));
   await batch.commit();
 }
@@ -244,10 +352,12 @@ export async function addGenre(groupId, genre, user) {
       createdAt: serverTimestamp(),
     });
   });
+  logActivity(groupId, user, 'genre_add', { genreName: genre.name });
 }
 
-export async function removeGenre(groupId, genreDocId) {
-  await deleteDoc(doc(db, 'groups', groupId, 'genres', genreDocId));
+export async function removeGenre(groupId, genre, user) {
+  await deleteDoc(doc(db, 'groups', groupId, 'genres', genre.id));
+  logActivity(groupId, user, 'genre_remove', { genreName: genre.name });
 }
 
 // ───────────── PELÍCULAS (CREATE / UPDATE / DELETE) ─────────────
@@ -293,6 +403,7 @@ export async function putMovieOnBill(groupId, movie, genre, genreNames, details,
     tx.update(groupRef, { currentMovieId: movieRef.id });
   });
 
+  logActivity(groupId, user, 'spin', { genreName: genre.name, movieTitle: movie.title });
   return movieRef.id;
 }
 
@@ -302,7 +413,7 @@ export async function vetoMovie(groupId, movieId, user) {
   const groupRef = doc(db, 'groups', groupId);
   const movieRef = doc(db, 'groups', groupId, 'movies', movieId);
 
-  await runTransaction(db, async (tx) => {
+  const title = await runTransaction(db, async (tx) => {
     const [groupSnap, movieSnap] = [await tx.get(groupRef), await tx.get(movieRef)];
     const group = groupSnap.data();
     const movie = movieSnap.data();
@@ -327,7 +438,10 @@ export async function vetoMovie(groupId, movieId, user) {
       currentMovieId: null,
       'round.vetoesUsed': arrayUnion(user.uid),
     });
+    return movie.title;
   });
+
+  logActivity(groupId, user, 'veto', { movieTitle: title });
 }
 
 // Guarda la reseña del usuario. Si con esta reseñaron todos,
@@ -337,7 +451,7 @@ export async function submitReview(groupId, movieId, { rating, text }, user) {
   const groupRef = doc(db, 'groups', groupId);
   const movieRef = doc(db, 'groups', groupId, 'movies', movieId);
 
-  return runTransaction(db, async (tx) => {
+  const result = await runTransaction(db, async (tx) => {
     const [groupSnap, movieSnap] = [await tx.get(groupRef), await tx.get(movieRef)];
     const group = groupSnap.data();
     const movie = movieSnap.data();
@@ -367,8 +481,21 @@ export async function submitReview(groupId, movieId, { rating, text }, user) {
         round: { number: (group.round?.number ?? 1) + 1, vetoesUsed: [] },
       });
     }
-    return everyoneReviewed;
+    const ratings = Object.values(reviews).map((r) => r.rating);
+    const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    return { everyoneReviewed, title: movie.title, avg };
   });
+
+  // v4: se publica que la vio (sin contar qué opinó: la reseña sigue sellada)
+  // y, si fue la última, que terminó la función.
+  logActivity(groupId, user, 'review', { movieTitle: result.title });
+  if (result.everyoneReviewed) {
+    logActivity(groupId, user, 'reveal', {
+      movieTitle: result.title,
+      avg: Math.round(result.avg * 10) / 10,
+    });
+  }
+  return result.everyoneReviewed;
 }
 
 // Borra la reseña propia (solo mientras la película sigue en cartelera).

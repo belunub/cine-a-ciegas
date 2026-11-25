@@ -29,7 +29,7 @@ export default function GroupSettings({ group, user, onClose, onExit }) {
     setNameError(null);
     setBusy('rename');
     try {
-      await renameGroup(group.id, clean);
+      await renameGroup(group.id, clean, user);
       notify(`El grupo ahora se llama "${clean}".`);
       onClose();
     } catch (err) {
@@ -46,7 +46,7 @@ export default function GroupSettings({ group, user, onClose, onExit }) {
         await deleteGroup(group.id);
         notify(`Eliminaste "${group.name}".`);
       } else {
-        await leaveGroup(group.id, user.uid);
+        await leaveGroup(group.id, user);
         notify(`Saliste de "${group.name}".`);
       }
       onExit();
